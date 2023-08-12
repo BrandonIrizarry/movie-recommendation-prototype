@@ -1,4 +1,8 @@
 ;; -*- lexical-binding: t; -*-
+;;;
+;;; This is almost how Aladdin must've felt when he stumbled into the
+;;; cave and found the Diamond in the Rough, the Genie of the Lamp.
+;;;
 
 (require 'parse-csv)
 
