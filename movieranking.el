@@ -6,6 +6,28 @@
 
 (require 'parse-csv)
 
+;; I don't really like the syntax of MAPHASH, since it 1. forces you
+;; to separate away the table you're operating on, which can be hard
+;; to read for nested invocations; 2. otherwise compels you to let-out
+;; the lambda you're using, forcing you to either give it a name, or
+;; else potentially change what variables it's scoping over (that last
+;; point is more of a suspicion, but still.)
+;;
+;; Also, this macro lets you optionally return a result, which in many
+;; cases is the hash-table itself, a feature missing in MAPHASH.
+(cl-defmacro dohash ((key value hash-table &optional result) &rest body)
+  "Loop over a hash table's key-value pairs, as with MAPHASH.
+
+Evaluate BODY with KEY and VALUE bound, in each iteration, to a
+key-value in HASH-TABLE.  Then evaluate RESULT to get the return
+value (default NIL).
+
+\(fn (KEY VALUE HASH-TABLE [RESULT]) BODY...)"
+  (declare (indent 1) (debug ((symbolp symbolp form &optional form) body)))
+  `(progn
+     (maphash (lambda (,key ,value) ,@body) ,hash-table)
+     ,result))
+
 (defun compute-rater-table (filename)
   "Generate a hash table mapping rater IDs to information about
 movies rated.
@@ -40,30 +62,27 @@ Movies are indicated by unique ID numbers."
   (let ((row1 (gethash rater-id-1 rater-table))
         (row2 (gethash rater-id-2 rater-table))
         (dot-product 0))
-    (maphash (lambda (movie-id info-1)
-               (cl-flet ((normalize (rating)
-                           (- (string-to-number rating) 5)))
-                 (let ((rating-1 (car info-1)))
-                   (when-let ((info-2 (gethash movie-id row2)))
-                     (let ((rating-2 (car info-2)))
-                       (cl-incf dot-product
-                                (* (normalize rating-1)
-                                   (normalize rating-2))))))))
-             row1)
-    dot-product))
+    (dohash (movie-id info-1 row1 dot-product)
+      (cl-flet ((normalize (rating)
+                  (- (string-to-number rating) 5)))
+        (let ((rating-1 (car info-1)))
+          ;; Compute dot-product only when the two raters have a movie
+          ;; in common.
+          (when-let ((info-2 (gethash movie-id row2)))
+            (let ((rating-2 (car info-2)))
+              (cl-incf dot-product
+                       (* (normalize rating-1)
+                          (normalize rating-2))))))))))
 
 (defun compute-ratings-table (rater-table)
   (let ((table (make-hash-table :test #'equal)))
-    (maphash (lambda (rater-id movie-table)
-               (maphash (lambda (movie-id info)
-                          (let ((entry (gethash movie-id
-                                                table
-                                                (make-hash-table :test #'equal))))
-                            (puthash rater-id info entry)
-                            (puthash movie-id entry table)))
-                        movie-table))
-             rater-table)
-    table))
+    (dohash (rater-id movie-table rater-table table)
+      (dohash (movie-id info movie-table)
+        (let ((entry (gethash movie-id
+                              table
+                              (make-hash-table :test #'equal))))
+          (puthash rater-id info entry)
+          (puthash movie-id entry table))))))
 
 (defun compute-coefficient-table (rater-table rater-id)
   (error "To be implemented."))
