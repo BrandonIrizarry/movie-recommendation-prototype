@@ -52,7 +52,7 @@ Movies are indicated by unique ID numbers."
              row1)
     dot-product))
 
-(defun compute-movie-table (rater-table)
+(defun compute-ratings-table (rater-table)
   (let ((table (make-hash-table :test #'equal)))
     (maphash (lambda (rater-id movie-table)
                (maphash (lambda (movie-id info)
@@ -70,4 +70,4 @@ Movies are indicated by unique ID numbers."
 
 (let ((table (compute-rater-table "data/ratings_short.csv")))
   (compute-dot-product table "1" "2")
-  (compute-movie-table table))
+  (compute-ratings-table table))
