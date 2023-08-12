@@ -65,6 +65,9 @@ Movies are indicated by unique ID numbers."
              rater-table)
     table))
 
+(defun compute-coefficient-table (rater-table rater-id)
+  (error "To be implemented."))
+
 (let ((table (compute-rater-table "data/ratings_short.csv")))
   (compute-dot-product table "1" "2")
   (compute-movie-table table))
