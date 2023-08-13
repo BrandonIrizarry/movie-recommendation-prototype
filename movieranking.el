@@ -187,19 +187,17 @@ etc.)"
            (title (movie-info-title movie-info)))
       (message "%s ---> %f" title average))))
 
-;;; Tests
-
 (defun print-hash-table (hash-table)
   "Print a hash table's key-value pairs."
   (dohash (key value hash-table)
     (message "%s %s" key value)))
 
-(defun main ()
+(defun main (rater-id min-raters num-similar-raters)
   (let ((rater-table (compute-rater-table "data/ratings.csv")))
-    (let* ((full-ctable (compute-full-coefficient-table rater-table "65"))
-           (refined-ctable (compute-refined-coefficient-table full-ctable 20))
+    (let* ((full-ctable (compute-full-coefficient-table rater-table rater-id))
+           (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
            (ratings-table (compute-ratings-table rater-table))
-           (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable 5))
+           (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
 
            ;; We may not need 'movie-data-table' as a standalone
            ;; variable?
@@ -209,3 +207,12 @@ etc.)"
            (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
       (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
         (movie-info-title (gethash top-movie-id movie-data-table))))))
+
+;;; Tests
+
+(require 'ert)
+
+(ert-deftest top-action-movie-is-rush ()
+  (should (equal
+           "Rush"
+           (main "65" 5 20))))
