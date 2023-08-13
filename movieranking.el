@@ -196,21 +196,26 @@ etc.)"
   (dohash (key value hash-table)
     (message "%s %s" key value)))
 
-(defun main (rater-id min-raters num-similar-raters)
-  (let ((rater-table (compute-rater-table "data/ratings.csv")))
-    (let* ((full-ctable (compute-full-coefficient-table rater-table rater-id))
-           (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
-           (ratings-table (compute-ratings-table rater-table))
-           (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
+(defun main (rater-id min-raters num-similar-raters &rest filters)
+  (cl-flet ((yes (movie-id) t))
+    (let ((filters (or filters (cons #'yes filters))))
+      (let ((rater-table (compute-rater-table "data/ratings.csv")))
+        (let* ((full-ctable (compute-full-coefficient-table rater-table rater-id))
+               (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
+               (ratings-table (compute-ratings-table rater-table))
+               (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
 
-           ;; We may not need 'movie-data-table' as a standalone
-           ;; variable?
-           (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
-           (mat-filtered (progn (initialize-predicates movie-data-table)
-                                (filter-movie-averages-table movie-averages-table (make-genre-p "Action"))))
-           (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
-      (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
-        (movie-info-title (gethash top-movie-id movie-data-table))))))
+               ;; We may not need 'movie-data-table' as a standalone
+               ;; variable?
+               (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
+               (mat-filtered (progn (initialize-predicates movie-data-table)
+                                    (filter-movie-averages-table movie-averages-table
+                                                                 (if-let ((genre (plist-get filters :genre)))
+                                                                   (make-genre-p genre)
+                                                                   #'yes))))
+               (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
+          (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
+            (movie-info-title (gethash top-movie-id movie-data-table))))))))
 
 ;;; Tests
 
@@ -219,4 +224,9 @@ etc.)"
 (ert-deftest top-action-movie-is-rush ()
   (should (equal
            "Rush"
+           (main "65" 5 20 :genre "Action"))))
+
+(ert-deftest top-movie-is-the-fault-in-our-stars ()
+  (should (equal
+           "The Fault in Our Stars"
            (main "65" 5 20))))
