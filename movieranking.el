@@ -172,14 +172,18 @@ detailing info about movies."
              (genres (movie-info-genres full-info)))
         (string-match genre genres)))))
 
-(defun filter-movie-averages-table (movie-averages-table predicate-fn)
+(defun filter-movie-averages-table (movie-averages-table &rest predicate-fns)
   "Return a copy of the given MOVIE-AVERAGES-TABLE, but filtered by
 PREDICATE-FN (for example, a genre filter, year, movie length,
 etc.)"
-  (let ((copy (copy-hash-table movie-averages-table)))
-    (dohash (movie-id average movie-averages-table copy)
-      (unless (funcall predicate-fn movie-id)
-        (remhash movie-id copy)))))
+  (cl-flet ((check-all (movie-id preds)
+              (cl-reduce (lambda (verdict fn) (and verdict (funcall fn movie-id)))
+                         preds
+                         :initial-value t)))
+    (let ((copy (copy-hash-table movie-averages-table)))
+      (dohash (movie-id average movie-averages-table copy)
+        (unless (check-all movie-id predicate-fns)
+          (remhash movie-id copy))))))
 
 (defun pretty-print-top-ranked-movies-by-title (movie-data-table top-ranked-movie-ids)
   (pcase-dolist (`(,movie-id . ,average) top-ranked-movie-ids)
