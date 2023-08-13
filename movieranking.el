@@ -85,9 +85,8 @@ application.)"
 
 (defun compute-refined-coefficient-table (coefficient-table num-similar-raters)
   "Given a coefficient table, generate a new one, but only keep the
-raters with the highest coefficients.
-
-If necessary, filter out any non-positive cofficients as well."
+raters with the highest coefficients. Of these, filter out any
+non-positive cofficients as well."
   (let* ((coefficients (hash-table-values coefficient-table))
          (top-coefficients (seq-take (sort coefficients #'>)
                                      num-similar-raters)))
