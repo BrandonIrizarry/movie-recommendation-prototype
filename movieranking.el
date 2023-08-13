@@ -150,9 +150,7 @@ detailing info about movies."
   id title year country genres directors minutes poster-url)
 
 (defun compute-movie-data-table (filename)
-  "A hash table that maps a movie ID to various important data
-about it, such as its name, list of genres, list of directors,
-year produced, poster url, etc."
+  "A hash table that maps a movie ID to a MOVIE-INFO struct."
   (let ((lists (with-temp-buffer
                  (insert-file-contents filename)
                  (parse-csv-string-rows (buffer-string) ?\, ?\" "\n")))
