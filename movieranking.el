@@ -163,6 +163,23 @@ detailing info about movies."
     (dolist (row (cdr lists) table)
       (puthash (car row) (apply #'new-movie-info row) table))))
 
+;; Use a factory for predicates. This eliminates the dependency on the
+;; movie data table that client functions would otherwise inherit.
+(defun initialize-predicates (movie-data-table)
+  (defun genre-p (movie-id genre)
+    (let* ((full-info (gethash movie-id movie-data-table))
+           (genres (movie-info-genres full-info)))
+      (string-match genre genres))))
+
+(defun filter-movie-averages-table (movie-averages-table predicate-fn &rest args)
+  "Return a copy of the given MOVIE-AVERAGES-TABLE, but filtered by
+PREDICATE-FN (for example, a genre filter, year, movie length,
+etc.)"
+  (let ((copy (copy-hash-table movie-averages-table)))
+    (dohash (movie-id average movie-averages-table copy)
+      (unless (apply predicate-fn movie-id args)
+        (remhash movie-id copy)))))
+
 (defun pretty-print-top-ranked-movies-by-title (movie-data-table top-ranked-movie-ids)
   (pcase-dolist (`(,movie-id . ,average) top-ranked-movie-ids)
     (let* ((movie-info (gethash movie-id movie-data-table))
@@ -182,6 +199,11 @@ detailing info about movies."
            (refined-ctable (compute-refined-coefficient-table full-ctable 20))
            (ratings-table (compute-ratings-table rater-table))
            (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable 5))
+
+           ;; We may not need 'movie-data-table' as a standalone
+           ;; variable?
            (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
-           (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table 10)))
+           (mat-filtered (progn (initialize-predicates movie-data-table)
+                                (filter-movie-averages-table movie-averages-table #'genre-p "Action")))
+           (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
       (pretty-print-top-ranked-movies-by-title movie-data-table top-ranked-movie-ids))))
