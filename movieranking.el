@@ -109,6 +109,8 @@ If necessary, filter out any non-positive cofficients as well."
           (remhash rater-id refined-coefficient-table))))))
 
 
+;;; Tests
+
 (defun print-hash-table (hash-table)
   "Print a hash table's key-value pairs."
   (dohash (key value hash-table)
