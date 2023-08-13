@@ -29,8 +29,8 @@ value (default NIL).
      ,result))
 
 (defun compute-rater-table (filename)
-  "Generate a hash table mapping rater IDs to information about
-movies rated.
+  "Generate a hash table that maps a rater IDs to another hash
+table that maps a movie ID to a rating.
 
 Movies are indicated by unique ID numbers."
   (let ((lists (with-temp-buffer
@@ -70,6 +70,8 @@ Movies are indicated by unique ID numbers."
                       (normalize rating-2))))))))
 
 (defun compute-ratings-table (rater-table)
+  "Generate a hash table that maps a movie ID to another hash table that
+maps a rater ID to a rating."
   (let ((ratings-table (make-hash-table :test #'equal)))
     (dohash (rater-id movie-table rater-table ratings-table)
       (dohash (movie-id rating movie-table)
@@ -79,16 +81,29 @@ Movies are indicated by unique ID numbers."
           (puthash rater-id rating entry)
           (puthash movie-id entry ratings-table))))))
 
-(defun compute-coefficient-table (rater-table rater-id)
-  (error "To be implemented."))
+(defun compute-full-coefficient-table (rater-table main-rater-id)
+  "Generate a hash table that maps a rater ID to the dot product of that rater
+and some given \"main\" rater (in practice, the user of the
+application.)"
+  (let ((coefficient-table (make-hash-table :test #'equal))
+        (rater-table-without-main (copy-hash-table rater-table)))
+
+    ;; Don't compute a "dot-square".
+    (remhash main-rater-id rater-table-without-main)
+
+    (dohash (rater-id movie-table rater-table-without-main coefficient-table)
+      (let ((dot-product (compute-dot-product rater-table main-rater-id rater-id)))
+        (puthash rater-id dot-product coefficient-table)))))
+
+(defun compute-refined-coefficient-table (coefficient-table num-similar-raters)
+  "")
+
 
 (defun print-hash-table (hash-table)
   "Print a hash table's key-value pairs."
   (dohash (key value hash-table)
     (message "%s %s" key value)))
 
-(let ((table (compute-rater-table "data/ratings_short.csv")))
-  (print-hash-table table)
-  (compute-dot-product table "1" "2")
-  (let ((result (compute-ratings-table table)))
-    (print-hash-table result)))
+(let ((rater-table (compute-rater-table "data/ratings.csv")))
+  (let ((ctable (compute-full-coefficient-table rater-table "65")))
+    (print-hash-table ctable)))
