@@ -134,10 +134,10 @@ table (that row is skipped.)"
 (defun get-top-ranked-movie-ids (movie-averages-table top-n)
   "Using MOVIE-AVERAGES-TABLE, generate a descending-sorted list of
 movies, along with their weighted averages."
-  (let (pairs)
-    (cl-flet ((better-movie-p (lambda (pair1 pair2)
-                                 (> (cdr pair1)
-                                    (cdr pair2)))))
+  (cl-flet ((better-movie-p (lambda (pair1 pair2)
+                              (> (cdr pair1)
+                                 (cdr pair2)))))
+    (let (pairs)
       (dohash (movie-id average movie-averages-table (sort pairs #'better-movie-p))
         (push (cons movie-id average) pairs)))))
 
