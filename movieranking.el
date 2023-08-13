@@ -96,7 +96,17 @@ application.)"
         (puthash rater-id dot-product coefficient-table)))))
 
 (defun compute-refined-coefficient-table (coefficient-table num-similar-raters)
-  "")
+  "Given a coefficient table, generate a new one, but only keep the
+raters with the highest coefficients.
+
+If necessary, filter out any non-positive cofficients as well."
+  (let* ((coefficients (hash-table-values coefficient-table))
+         (top-coefficients (seq-take (sort coefficients #'>)
+                                     num-similar-raters)))
+    (let ((refined-coefficient-table (copy-hash-table coefficient-table)))
+      (dohash (rater-id coefficient coefficient-table refined-coefficient-table)
+        (unless (memql coefficient top-coefficients)
+          (remhash rater-id refined-coefficient-table))))))
 
 
 (defun print-hash-table (hash-table)
@@ -105,5 +115,6 @@ application.)"
     (message "%s %s" key value)))
 
 (let ((rater-table (compute-rater-table "data/ratings.csv")))
-  (let ((ctable (compute-full-coefficient-table rater-table "65")))
-    (print-hash-table ctable)))
+  (let* ((full-ctable (compute-full-coefficient-table rater-table "65"))
+         (refined-ctable (compute-refined-coefficient-table full-ctable 20)))
+    (print-hash-table refined-ctable)))
