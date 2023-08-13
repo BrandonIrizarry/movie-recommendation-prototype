@@ -207,4 +207,5 @@ etc.)"
            (mat-filtered (progn (initialize-predicates movie-data-table)
                                 (filter-movie-averages-table movie-averages-table (make-genre-p "Action"))))
            (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
-      (pretty-print-top-ranked-movies-by-title movie-data-table top-ranked-movie-ids))))
+      (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
+        (movie-info-title (gethash top-movie-id movie-data-table))))))
