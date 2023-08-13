@@ -162,6 +162,12 @@ detailing info about movies."
     (dolist (row (cdr lists) table)
       (puthash (car row) (apply #'new-movie-info row) table))))
 
+(defun pretty-print-top-ranked-movies-by-title (movie-data-table top-ranked-movie-ids)
+  (pcase-dolist (`(,movie-id . ,average) top-ranked-movie-ids)
+    (let* ((movie-info (gethash movie-id movie-data-table))
+           (title (movie-info-title movie-info)))
+      (message "%s ---> %f" title average))))
+
 ;;; Tests
 
 (defun print-hash-table (hash-table)
@@ -173,7 +179,7 @@ detailing info about movies."
   (let* ((full-ctable (compute-full-coefficient-table rater-table "65"))
          (refined-ctable (compute-refined-coefficient-table full-ctable 20))
          (ratings-table (compute-ratings-table rater-table))
-         (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable 5)))
-    (get-top-ranked-movie-ids movie-averages-table 10)))
-
-(print-hash-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
+         (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable 5))
+         (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
+         (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table 10)))
+    (pretty-print-top-ranked-movies-by-title movie-data-table top-ranked-movie-ids)))
