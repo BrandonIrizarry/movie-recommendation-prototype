@@ -138,7 +138,8 @@ movies, along with their weighted averages."
                               (> (cdr pair1)
                                  (cdr pair2)))))
     (let (pairs)
-      (dohash (movie-id average movie-averages-table (sort pairs #'better-movie-p))
+      (dohash (movie-id average movie-averages-table (seq-take (sort pairs #'better-movie-p)
+                                                               top-n))
         (push (cons movie-id average) pairs)))))
 
 (cl-defstruct (movie-info
