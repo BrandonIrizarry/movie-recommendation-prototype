@@ -69,18 +69,6 @@ Movies are indicated by unique ID numbers."
                    (* (normalize rating-1)
                       (normalize rating-2))))))))
 
-(defun compute-ratings-table (rater-table)
-  "Generate a hash table that maps a movie ID to another hash table that
-maps a rater ID to a rating."
-  (let ((ratings-table (make-hash-table :test #'equal)))
-    (dohash (rater-id movie-table rater-table ratings-table)
-      (dohash (movie-id rating movie-table)
-        (let ((entry (gethash movie-id
-                              ratings-table
-                              (make-hash-table :test #'equal))))
-          (puthash rater-id rating entry)
-          (puthash movie-id entry ratings-table))))))
-
 (defun compute-full-coefficient-table (rater-table main-rater-id)
   "Generate a hash table that maps a rater ID to the dot product of that rater
 and some given \"main\" rater (in practice, the user of the
@@ -108,6 +96,17 @@ If necessary, filter out any non-positive cofficients as well."
         (unless (memql coefficient top-coefficients)
           (remhash rater-id refined-coefficient-table))))))
 
+(defun compute-ratings-table (rater-table)
+  "Generate a hash table that maps a movie ID to another hash table that
+maps a rater ID to a rating."
+  (let ((ratings-table (make-hash-table :test #'equal)))
+    (dohash (rater-id movie-table rater-table ratings-table)
+      (dohash (movie-id rating movie-table)
+        (let ((entry (gethash movie-id
+                              ratings-table
+                              (make-hash-table :test #'equal))))
+          (puthash rater-id rating entry)
+          (puthash movie-id entry ratings-table))))))
 
 ;;; Tests
 
