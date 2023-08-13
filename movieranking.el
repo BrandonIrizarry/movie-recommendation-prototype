@@ -130,16 +130,18 @@ table (that row is skipped.)"
         (when (>= i min-raters)
           (puthash movie-id (/ sum (float i)) movie-averages-table))))))
 
-(defun get-top-ranked-movie-ids (movie-averages-table top-n)
+(defun get-top-ranked-movie-ids (movie-averages-table &optional top-n)
   "Using MOVIE-AVERAGES-TABLE, generate a descending-sorted list of
 movies, along with their weighted averages."
   (cl-flet ((better-movie-p (lambda (pair1 pair2)
                               (> (cdr pair1)
                                  (cdr pair2)))))
     (let (pairs)
-      (dohash (movie-id average movie-averages-table (seq-take (sort pairs #'better-movie-p)
-                                                               top-n))
-        (push (cons movie-id average) pairs)))))
+      (dohash (movie-id average movie-averages-table)
+        (push (cons movie-id average) pairs))
+      (let ((sorted (sort pairs #'better-movie-p)))
+        (seq-take sorted (or top-n
+                             (length sorted)))))))
 
 (cl-defstruct (movie-info
                 (:constructor new-movie-info
