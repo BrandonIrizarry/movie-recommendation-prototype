@@ -141,6 +141,28 @@ movies, along with their weighted averages."
       (dohash (movie-id average movie-averages-table (sort pairs #'better-movie-p))
         (push (cons movie-id average) pairs)))))
 
+(cl-defstruct (movie-info
+                (:constructor new-movie-info
+                              (id title year country genres directors minutes poster-url)))
+  "A struct that bundles a given row of data from a CSV file
+detailing info about movies."
+  id title year country genres directors minutes poster-url)
+
+(defun compute-movie-data-table (filename)
+  "A hash table that maps a movie ID to various important data
+about it, such as its name, list of genres, list of directors,
+year produced, poster url, etc."
+  (let ((lists (with-temp-buffer
+                 (insert-file-contents filename)
+                 (parse-csv-string-rows (buffer-string) ?\, ?\" "\n")))
+        (table (make-hash-table :test #'equal)))
+
+    ;; Remove empty keys
+    (cl-delete-if (lambda (rater-id) (string-empty-p rater-id)) (cdr lists) :key #'car)
+
+    (dolist (row (cdr lists) table)
+      (puthash (car row) (apply #'new-movie-info row) table))))
+
 ;;; Tests
 
 (defun print-hash-table (hash-table)
@@ -154,3 +176,5 @@ movies, along with their weighted averages."
          (ratings-table (compute-ratings-table rater-table))
          (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable 5)))
     (get-top-ranked-movie-ids movie-averages-table 10)))
+
+(print-hash-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
