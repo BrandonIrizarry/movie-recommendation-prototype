@@ -93,7 +93,8 @@ If necessary, filter out any non-positive cofficients as well."
                                      num-similar-raters)))
     (let ((refined-coefficient-table (copy-hash-table coefficient-table)))
       (dohash (rater-id coefficient coefficient-table refined-coefficient-table)
-        (unless (memql coefficient top-coefficients)
+        (unless (and (memql coefficient top-coefficients)
+                     (> coefficient 0))
           (remhash rater-id refined-coefficient-table))))))
 
 (defun compute-ratings-table (rater-table)
