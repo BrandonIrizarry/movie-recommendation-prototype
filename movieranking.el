@@ -166,18 +166,19 @@ detailing info about movies."
 ;; Use a factory for predicates. This eliminates the dependency on the
 ;; movie data table that client functions would otherwise inherit.
 (defun initialize-predicates (movie-data-table)
-  (defun genre-p (movie-id genre)
-    (let* ((full-info (gethash movie-id movie-data-table))
-           (genres (movie-info-genres full-info)))
-      (string-match genre genres))))
+  (defun make-genre-p (genre)
+    (lambda (movie-id)
+      (let* ((full-info (gethash movie-id movie-data-table))
+             (genres (movie-info-genres full-info)))
+        (string-match genre genres)))))
 
-(defun filter-movie-averages-table (movie-averages-table predicate-fn &rest args)
+(defun filter-movie-averages-table (movie-averages-table predicate-fn)
   "Return a copy of the given MOVIE-AVERAGES-TABLE, but filtered by
 PREDICATE-FN (for example, a genre filter, year, movie length,
 etc.)"
   (let ((copy (copy-hash-table movie-averages-table)))
     (dohash (movie-id average movie-averages-table copy)
-      (unless (apply predicate-fn movie-id args)
+      (unless (funcall predicate-fn movie-id)
         (remhash movie-id copy)))))
 
 (defun pretty-print-top-ranked-movies-by-title (movie-data-table top-ranked-movie-ids)
@@ -204,6 +205,6 @@ etc.)"
            ;; variable?
            (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
            (mat-filtered (progn (initialize-predicates movie-data-table)
-                                (filter-movie-averages-table movie-averages-table #'genre-p "Action")))
+                                (filter-movie-averages-table movie-averages-table (make-genre-p "Action"))))
            (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
       (pretty-print-top-ranked-movies-by-title movie-data-table top-ranked-movie-ids))))
