@@ -1,0 +1,48 @@
+* Goal
+Write an application that lets users first rate a set of movies,
+then outputs some movie suggestions.
+
+When writing and debugging this application, a randomly picked
+rater takes the place of the user (for example, rater with id 65).
+
+This is meant to be an Elisp prototype of an application I'm going
+to write in Java for Duke's Coursera Learn to Program in Java
+Specialization Capstone Project.
+
+* Definitions
+** The Various Tables
+*** Rater Table
+A hash table that maps a rater ID to another hash table that maps a
+movie ID to a rating.
+
+*** Ratings Table
+A hash table that maps a movie ID to another hash table that maps a
+rater ID to a rating.
+
+*** Movie Averages Table
+A hash table that maps a movie ID to its computed weighted-average
+rating. Once this is computed correctly, everything that comes
+after is embellishment.
+
+*** Movie Data Table
+A hash table that maps a movie ID to various important data about
+it, such as its name, list of genres, list of directors, year
+produced, poster url, etc.
+
+*** Coefficient Table
+A hash table that maps a rater ID to the dot product of that rater
+and some given "main" rater (in practice, the user of the
+application.)
+
+** Some Auxiliary Concepts
+*** Dot Product
+A coefficient computed as a function of two rater IDs by
+
+1. looking at each movie they have in common;
+2. summing the normalized product of their ratings for that movie.
+
+*** Normalization
+Subtracting 5 from a rating. This formalizes the idea that, for
+example, a 2 should be a "bad" rating, and an 8 should be a "good"
+rating. In this case, a term of -3 * 3 = -9 would be contributed
+to the dot product.
