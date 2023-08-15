@@ -15,13 +15,13 @@ table that maps a movie ID to a rating.
 Movies are indicated by unique ID numbers."
   (let ((csv-data (get-raw-csv-data filename))
         (table (make-hash-table :test #'equal)))
-    (dolist (row csv-data table)
-      (seq-let (rater-id movie-id rating) row
-        (let ((entry (gethash rater-id
-                              table
-                              (make-hash-table :test #'equal))))
-          (puthash movie-id rating entry)
-          (puthash rater-id entry table))))))
+    (pcase-dolist (`(,rater-id ,movie-id ,rating) csv-data)
+      (let ((entry (gethash rater-id
+                            table
+                            (make-hash-table :test #'equal))))
+        (puthash movie-id rating entry)
+        (puthash rater-id entry table)))
+    table))
 
 (defun compute-dot-product (rater-table rater-id-1 rater-id-2)
   "Compute the dot product of two rows in the given RATER-TABLE."
