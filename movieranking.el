@@ -50,17 +50,41 @@ NUM-SIMILAR-RATERS) coefficients."
                                     (not (memql coefficient top-coefficients))))))
       (hash-table-delete-if coefficient-table bad-coefficient-p))))
 
-(defun compute-ratings-table ()
+(defun compute-ratings-table (&rest filters)
   "Generate a hash table that maps a movie ID to another hash table that
-maps a rater ID to a rating."
-  (let ((ratings-table (make-hash-table :test #'equal)))
-    (dohash (rater-id movie-table *rater-table* ratings-table)
-      (dohash (movie-id rating movie-table)
-        (let ((entry (gethash movie-id
-                              ratings-table
-                              (make-hash-table :test #'equal))))
-          (puthash rater-id rating entry)
-          (puthash movie-id entry ratings-table))))))
+maps a rater ID to a rating.
+
+Filter according to keyword args FILTERS."
+
+  ;; Tell program how to define a predicate, given a keyword and
+  ;; corresponding argument.
+  (cl-flet ((define-genre-predicate (genre)
+              (lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (genres (movie-info-genres full-info)))
+                  (string-match genre genres)))))
+    (let ((predicate-table
+           `((:genre . ,#'define-genre-predicate))))
+
+      ;; Compute the initial ratings table.
+      (let ((ratings-table (make-hash-table :test #'equal)))
+        (dohash (rater-id movie-table *rater-table* ratings-table)
+          (dohash (movie-id rating movie-table)
+            (let ((entry (gethash movie-id
+                                  ratings-table
+                                  (make-hash-table :test #'equal))))
+              (puthash rater-id rating entry)
+              (puthash movie-id entry ratings-table))))
+
+        ;; Filter out movies according to the filters defined in
+        ;; FILTERS.
+        (let (preds)
+          (let ((filter-args (seq-partition filters 2)))
+            (pcase-dolist (`(,filter-type ,criterion) filter-args)
+              (when-let ((pred-maker (cdr (assq filter-type predicate-table))))
+                (push (funcall pred-maker criterion) preds))))
+          (dolist (pred preds ratings-table)
+            (hash-table-delete-if ratings-table (lambda (movie-id _) (not (funcall pred movie-id))))))))))
 
 (defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
@@ -94,36 +118,13 @@ movies, along with their weighted averages."
         (seq-take sorted (or top-n
                              (length sorted)))))))
 
-;; Use a factory for predicates. This eliminates the dependency on the
-;; movie data table that client functions would otherwise inherit.
-(defun initialize-predicates ()
-  (defun make-genre-p (genre)
-    (lambda (movie-id)
-      (let* ((full-info (gethash movie-id *movie-data-table*))
-             (genres (movie-info-genres full-info)))
-        (string-match genre genres)))))
-
-(defun filter-movie-averages-table (movie-averages-table predicate-fn)
-  "Return a copy of the given MOVIE-AVERAGES-TABLE, but filtered by
-PREDICATE-FN (for example, a genre filter, year, movie length,
-etc.)"
-  (let ((copy (copy-hash-table movie-averages-table)))
-    (dohash (movie-id average movie-averages-table copy)
-      (unless (funcall predicate-fn movie-id)
-        (remhash movie-id copy)))))
-
 (defun main (rater-id min-raters num-similar-raters &rest filters)
   (cl-flet ((yes (movie-id) t))
     (let ((filters (or filters (cons #'yes filters))))
       (let* ((ctable (compute-coefficient-table rater-id num-similar-raters))
-             (ratings-table (compute-ratings-table))
+             (ratings-table (apply #'compute-ratings-table filters))
              (movie-averages-table (compute-movie-averages-table ratings-table ctable min-raters))
-             (mat-filtered (progn (initialize-predicates)
-                                  (filter-movie-averages-table movie-averages-table
-                                                               (if-let ((genre (plist-get filters :genre)))
-                                                                   (make-genre-p genre)
-                                                                   #'yes))))
-               (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
+             (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table)))
           (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
             (movie-info-title (gethash top-movie-id *movie-data-table*)))))))
 
