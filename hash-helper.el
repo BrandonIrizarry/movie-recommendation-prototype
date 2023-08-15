@@ -21,4 +21,15 @@ value (default NIL).
      (maphash (lambda (,key ,value) ,@body) ,hash-table)
      ,result))
 
-(provide 'dohash)
+(defun hash-table-delete-if (hash-table predicate)
+  "Destructively remove all key-value pairs of HASH-TABLE whenever
+PREDICATE returns T.
+
+PREDICATE is a function that accepts the key and value as
+arguments, in that order."
+  (let ((copy (copy-hash-table hash-table)))
+    (dohash (key value copy hash-table)
+      (when (funcall predicate key value)
+        (remhash key hash-table)))))
+
+(provide 'hash-helper)

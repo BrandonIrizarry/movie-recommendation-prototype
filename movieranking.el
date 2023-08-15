@@ -6,7 +6,7 @@
 
 (let ((load-path (cons (expand-file-name ".") load-path)))
   (require 'csv-helper)
-  (require 'dohash)
+  (require 'hash-helper)
   (require 'rater-table)
   (require 'movie-data-table))
 
@@ -23,32 +23,31 @@
                    (* (normalize rating-1)
                       (normalize rating-2))))))))
 
-(defun compute-full-coefficient-table (main-rater-id)
-  "Generate a hash table that maps a rater ID to the dot product of that rater
-and some given \"main\" rater (in practice, the user of the
-application.)"
+(defun compute-coefficient-table (main-rater-id num-similar-raters)
+  "Generate a hash table that maps a rater ID to the dot product of
+that rater and some given \"main\" rater (in practice, the user
+of the application.) This dot product is called a
+\"coefficient.\"
+
+Only keep raters with positive and high ranking (among top
+NUM-SIMILAR-RATERS) coefficients."
   (let ((coefficient-table (make-hash-table :test #'equal))
         (rater-table-without-main (copy-hash-table *rater-table*)))
 
-    ;; Don't compute a "dot-square".
+    ;; Avoid comparison with oneself.
     (remhash main-rater-id rater-table-without-main)
 
-    (dohash (rater-id movie-table rater-table-without-main coefficient-table)
+    ;; Compute the initial coefficient table
+    (dohash (rater-id movie-table rater-table-without-main)
       (let ((dot-product (compute-dot-product main-rater-id rater-id)))
-        (puthash rater-id dot-product coefficient-table)))))
+        (puthash rater-id dot-product coefficient-table)))
 
-(defun compute-refined-coefficient-table (coefficient-table num-similar-raters)
-  "Given a coefficient table, generate a new one, but only keep the
-raters with the highest coefficients. Of these, filter out any
-non-positive cofficients as well."
-  (let* ((coefficients (hash-table-values coefficient-table))
-         (top-coefficients (seq-take (sort coefficients #'>)
-                                     num-similar-raters)))
-    (let ((refined-coefficient-table (copy-hash-table coefficient-table)))
-      (dohash (rater-id coefficient coefficient-table refined-coefficient-table)
-        (unless (and (memql coefficient top-coefficients)
-                     (> coefficient 0))
-          (remhash rater-id refined-coefficient-table))))))
+    ;; Filter out non-positive and low-ranking coefficients
+    (let* ((coefficients (hash-table-values coefficient-table))
+           (top-coefficients (seq-take (sort coefficients #'>) num-similar-raters)))
+      (hash-table-delete-if coefficient-table (lambda (rater-id coefficient)
+                                                (or (<= coefficient 0)
+                                                    (not (memql coefficient top-coefficients))))))))
 
 (defun compute-ratings-table ()
   "Generate a hash table that maps a movie ID to another hash table that
@@ -62,11 +61,11 @@ maps a rater ID to a rating."
           (puthash rater-id rating entry)
           (puthash movie-id entry ratings-table))))))
 
-(defun compute-movie-averages-table (ratings-table refined-coefficient-table min-raters)
+(defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
 
 Each movie rating is weighted by the given rater's value in
-REFINED-COEFFICIENT-TABLE. If the rater isn't a key in that
+COEFFICIENT-TABLE. If the rater isn't a key in that
 table, then it's not included as part of the average.
 
 Also, if a given row in RATINGS-TABLE is smaller than MIN-RATERS,
@@ -77,7 +76,7 @@ table (that row is skipped.)"
       (let ((sum 0)
             (i 0))
         (dohash (rater-id rating ratings-by-rater)
-          (when-let ((coefficient (gethash rater-id refined-coefficient-table)))
+          (when-let ((coefficient (gethash rater-id coefficient-table)))
             (cl-incf sum (* coefficient
                             (string-to-number rating)))
             (cl-incf i)))
@@ -118,10 +117,9 @@ etc.)"
 (defun main (rater-id min-raters num-similar-raters &rest filters)
   (cl-flet ((yes (movie-id) t))
     (let ((filters (or filters (cons #'yes filters))))
-      (let* ((full-ctable (compute-full-coefficient-table rater-id))
-             (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
+      (let* ((ctable (compute-coefficient-table rater-id num-similar-raters))
              (ratings-table (compute-ratings-table))
-             (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
+             (movie-averages-table (compute-movie-averages-table ratings-table ctable min-raters))
              (mat-filtered (progn (initialize-predicates)
                                   (filter-movie-averages-table movie-averages-table
                                                                (if-let ((genre (plist-get filters :genre)))
