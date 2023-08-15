@@ -44,10 +44,11 @@ NUM-SIMILAR-RATERS) coefficients."
 
     ;; Filter out non-positive and low-ranking coefficients
     (let* ((coefficients (hash-table-values coefficient-table))
-           (top-coefficients (seq-take (sort coefficients #'>) num-similar-raters)))
-      (hash-table-delete-if coefficient-table (lambda (rater-id coefficient)
-                                                (or (<= coefficient 0)
-                                                    (not (memql coefficient top-coefficients))))))))
+           (top-coefficients (seq-take (sort coefficients #'>) num-similar-raters))
+           (bad-coefficient-p (lambda (rater-id coefficient)
+                                (or (<= coefficient 0)
+                                    (not (memql coefficient top-coefficients))))))
+      (hash-table-delete-if coefficient-table bad-coefficient-p))))
 
 (defun compute-ratings-table ()
   "Generate a hash table that maps a movie ID to another hash table that
