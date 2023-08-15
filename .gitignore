@@ -1,3 +1,6 @@
 .emacs*
 *.txt
 /data/
+*.org
+!README.org
+*ediff-merge*
