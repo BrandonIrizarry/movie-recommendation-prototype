@@ -5,7 +5,7 @@
 ;;;
 
 (let ((load-path (cons (expand-file-name ".") load-path)))
-  (require 'parse-csv)
+  (require 'csv-helper)
   (require 'dohash))
 
 (defun compute-rater-table (filename)
@@ -13,22 +13,9 @@
 table that maps a movie ID to a rating.
 
 Movies are indicated by unique ID numbers."
-  (let ((lists (with-temp-buffer
-                 (insert-file-contents filename)
-                 (parse-csv-string-rows (buffer-string) ?\, ?\" "\n")))
+  (let ((csv-data (get-raw-csv-data filename))
         (table (make-hash-table :test #'equal)))
-
-    ;; Remove empty keys.
-    ;;
-    ;; I suspect this happens because of a trailing newline at the end
-    ;; of the file, but I'm not entirely sure, so let's assume they
-    ;; can occur anywhere before then.
-    ;;
-    ;; Anyway, this looks like something peculiar to the CSV parser
-    ;; we're using; our Java code need not worry about this.
-    (cl-delete-if (lambda (rater-id) (string-empty-p rater-id)) (cdr lists) :key #'car)
-
-    (dolist (row (cdr lists) table)     ; skip the header row
+    (dolist (row csv-data table)
       (seq-let (rater-id movie-id rating) row
         (let ((entry (gethash rater-id
                               table
