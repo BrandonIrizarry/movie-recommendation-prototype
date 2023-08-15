@@ -6,27 +6,13 @@
 
 (let ((load-path (cons (expand-file-name ".") load-path)))
   (require 'csv-helper)
-  (require 'dohash))
+  (require 'dohash)
+  (require 'rater-table))
 
-(defun compute-rater-table (filename)
-  "Generate a hash table that maps a rater IDs to another hash
-table that maps a movie ID to a rating.
-
-Movies are indicated by unique ID numbers."
-  (let ((csv-data (get-raw-csv-data filename))
-        (table (make-hash-table :test #'equal)))
-    (pcase-dolist (`(,rater-id ,movie-id ,rating) csv-data)
-      (let ((entry (gethash rater-id
-                            table
-                            (make-hash-table :test #'equal))))
-        (puthash movie-id rating entry)
-        (puthash rater-id entry table)))
-    table))
-
-(defun compute-dot-product (rater-table rater-id-1 rater-id-2)
+(defun compute-dot-product (rater-id-1 rater-id-2)
   "Compute the dot product of two rows in the given RATER-TABLE."
-  (let ((row1 (gethash rater-id-1 rater-table))
-        (row2 (gethash rater-id-2 rater-table))
+  (let ((row1 (gethash rater-id-1 *rater-table*))
+        (row2 (gethash rater-id-2 *rater-table*))
         (dot-product 0))
     (dohash (movie-id rating-1 row1 dot-product)
       (cl-flet ((normalize (rating)
@@ -36,18 +22,18 @@ Movies are indicated by unique ID numbers."
                    (* (normalize rating-1)
                       (normalize rating-2))))))))
 
-(defun compute-full-coefficient-table (rater-table main-rater-id)
+(defun compute-full-coefficient-table (main-rater-id)
   "Generate a hash table that maps a rater ID to the dot product of that rater
 and some given \"main\" rater (in practice, the user of the
 application.)"
   (let ((coefficient-table (make-hash-table :test #'equal))
-        (rater-table-without-main (copy-hash-table rater-table)))
+        (rater-table-without-main (copy-hash-table *rater-table*)))
 
     ;; Don't compute a "dot-square".
     (remhash main-rater-id rater-table-without-main)
 
     (dohash (rater-id movie-table rater-table-without-main coefficient-table)
-      (let ((dot-product (compute-dot-product rater-table main-rater-id rater-id)))
+      (let ((dot-product (compute-dot-product main-rater-id rater-id)))
         (puthash rater-id dot-product coefficient-table)))))
 
 (defun compute-refined-coefficient-table (coefficient-table num-similar-raters)
@@ -63,11 +49,11 @@ non-positive cofficients as well."
                      (> coefficient 0))
           (remhash rater-id refined-coefficient-table))))))
 
-(defun compute-ratings-table (rater-table)
+(defun compute-ratings-table ()
   "Generate a hash table that maps a movie ID to another hash table that
 maps a rater ID to a rating."
   (let ((ratings-table (make-hash-table :test #'equal)))
-    (dohash (rater-id movie-table rater-table ratings-table)
+    (dohash (rater-id movie-table *rater-table* ratings-table)
       (dohash (movie-id rating movie-table)
         (let ((entry (gethash movie-id
                               ratings-table
@@ -162,23 +148,22 @@ etc.)"
 (defun main (rater-id min-raters num-similar-raters &rest filters)
   (cl-flet ((yes (movie-id) t))
     (let ((filters (or filters (cons #'yes filters))))
-      (let ((rater-table (compute-rater-table "data/ratings.csv")))
-        (let* ((full-ctable (compute-full-coefficient-table rater-table rater-id))
-               (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
-               (ratings-table (compute-ratings-table rater-table))
-               (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
+      (let* ((full-ctable (compute-full-coefficient-table rater-id))
+             (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
+             (ratings-table (compute-ratings-table))
+             (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
 
-               ;; We may not need 'movie-data-table' as a standalone
-               ;; variable?
-               (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
-               (mat-filtered (progn (initialize-predicates movie-data-table)
-                                    (filter-movie-averages-table movie-averages-table
-                                                                 (if-let ((genre (plist-get filters :genre)))
+             ;; We may not need 'movie-data-table' as a standalone
+             ;; variable?
+             (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
+             (mat-filtered (progn (initialize-predicates movie-data-table)
+                                  (filter-movie-averages-table movie-averages-table
+                                                               (if-let ((genre (plist-get filters :genre)))
                                                                    (make-genre-p genre)
                                                                    #'yes))))
                (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
           (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
-            (movie-info-title (gethash top-movie-id movie-data-table))))))))
+            (movie-info-title (gethash top-movie-id movie-data-table)))))))
 
 ;;; Tests
 
