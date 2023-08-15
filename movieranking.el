@@ -134,17 +134,6 @@ etc.)"
       (unless (funcall predicate-fn movie-id)
         (remhash movie-id copy)))))
 
-(defun pretty-print-top-ranked-movies-by-title (movie-data-table top-ranked-movie-ids)
-  (pcase-dolist (`(,movie-id . ,average) top-ranked-movie-ids)
-    (let* ((movie-info (gethash movie-id movie-data-table))
-           (title (movie-info-title movie-info)))
-      (message "%s ---> %f" title average))))
-
-(defun print-hash-table (hash-table)
-  "Print a hash table's key-value pairs."
-  (dohash (key value hash-table)
-    (message "%s %s" key value)))
-
 (defun main (rater-id min-raters num-similar-raters &rest filters)
   (cl-flet ((yes (movie-id) t))
     (let ((filters (or filters (cons #'yes filters))))
