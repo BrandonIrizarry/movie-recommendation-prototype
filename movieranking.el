@@ -7,7 +7,8 @@
 (let ((load-path (cons (expand-file-name ".") load-path)))
   (require 'csv-helper)
   (require 'dohash)
-  (require 'rater-table))
+  (require 'rater-table)
+  (require 'movie-data-table))
 
 (defun compute-dot-product (rater-id-1 rater-id-2)
   "Compute the dot product of two rows in the given RATER-TABLE."
@@ -96,32 +97,12 @@ movies, along with their weighted averages."
         (seq-take sorted (or top-n
                              (length sorted)))))))
 
-(cl-defstruct (movie-info
-                (:constructor new-movie-info
-                              (id title year country genres directors minutes poster-url)))
-  "A struct that bundles a given row of data from a CSV file
-detailing info about movies."
-  id title year country genres directors minutes poster-url)
-
-(defun compute-movie-data-table (filename)
-  "A hash table that maps a movie ID to a MOVIE-INFO struct."
-  (let ((lists (with-temp-buffer
-                 (insert-file-contents filename)
-                 (parse-csv-string-rows (buffer-string) ?\, ?\" "\n")))
-        (table (make-hash-table :test #'equal)))
-
-    ;; Remove empty keys
-    (cl-delete-if (lambda (rater-id) (string-empty-p rater-id)) (cdr lists) :key #'car)
-
-    (dolist (row (cdr lists) table)
-      (puthash (car row) (apply #'new-movie-info row) table))))
-
 ;; Use a factory for predicates. This eliminates the dependency on the
 ;; movie data table that client functions would otherwise inherit.
-(defun initialize-predicates (movie-data-table)
+(defun initialize-predicates ()
   (defun make-genre-p (genre)
     (lambda (movie-id)
-      (let* ((full-info (gethash movie-id movie-data-table))
+      (let* ((full-info (gethash movie-id *movie-data-table*))
              (genres (movie-info-genres full-info)))
         (string-match genre genres)))))
 
@@ -141,18 +122,14 @@ etc.)"
              (refined-ctable (compute-refined-coefficient-table full-ctable num-similar-raters))
              (ratings-table (compute-ratings-table))
              (movie-averages-table (compute-movie-averages-table ratings-table refined-ctable min-raters))
-
-             ;; We may not need 'movie-data-table' as a standalone
-             ;; variable?
-             (movie-data-table (compute-movie-data-table "data/ratedmoviesfull.csv"))
-             (mat-filtered (progn (initialize-predicates movie-data-table)
+             (mat-filtered (progn (initialize-predicates)
                                   (filter-movie-averages-table movie-averages-table
                                                                (if-let ((genre (plist-get filters :genre)))
                                                                    (make-genre-p genre)
                                                                    #'yes))))
                (top-ranked-movie-ids (get-top-ranked-movie-ids mat-filtered)))
           (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
-            (movie-info-title (gethash top-movie-id movie-data-table)))))))
+            (movie-info-title (gethash top-movie-id *movie-data-table*)))))))
 
 ;;; Tests
 
