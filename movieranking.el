@@ -66,12 +66,9 @@ maps a rater ID to a rating."
   "Generate a hash table that maps a movie ID to a weighted-average rating.
 
 Each movie rating is weighted by the given rater's value in
-COEFFICIENT-TABLE. If the rater isn't a key in that
-table, then it's not included as part of the average.
+COEFFICIENT-TABLE. Any rater not in COEFFICIENT-TABLE is skipped.
 
-Also, if a given row in RATINGS-TABLE is smaller than MIN-RATERS,
-that movie doesn't get included in the final movie-averages
-table (that row is skipped.)"
+Any row in RATINGS-TABLE ismaller than MIN-RATERS is skipped."
   (let ((movie-averages-table (make-hash-table :test #'equal)))
     (dohash (movie-id ratings-by-rater ratings-table movie-averages-table)
       (let ((sum 0)
