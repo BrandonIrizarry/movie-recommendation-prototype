@@ -73,11 +73,17 @@ Filter according to keyword args FILTERS."
               (lambda (movie-id)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (duration (movie-info-minutes full-info)))
-                  (<= min (string-to-number duration) max)))))
+                  (<= min (string-to-number duration) max))))
+            (define-year-predicate (given-year)
+              (lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (year (movie-info-year full-info)))
+                  (<= given-year (string-to-number year))))))
     (let ((predicate-table
            `((:genre . ,#'define-genre-predicate)
              (:directors . ,#'define-directors-predicate)
-             (:minutes . ,#'define-minutes-predicate))))
+             (:minutes . ,#'define-minutes-predicate)
+             (:year . ,#'define-year-predicate))))
 
       ;; Compute the initial ratings table.
       (let ((ratings-table (make-hash-table :test #'equal)))
@@ -163,3 +169,8 @@ movies, along with their weighted averages."
   (should (equal
            "Interstellar"
            (main "65" 5 10 :genre "Adventure" :minutes '(100 200)))))
+
+(ert-deftest top-year-2000-minutes-80-100-is-the-grand-budapest-hotel ()
+  (should (equal
+           "The Grand Budapest Hotel"
+           (main "65" 5 10 :year 2000 :minutes '(80 100)))))
