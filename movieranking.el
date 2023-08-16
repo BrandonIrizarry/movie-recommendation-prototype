@@ -126,14 +126,12 @@ movies, along with their weighted averages."
                              (length sorted)))))))
 
 (defun main (rater-id min-raters num-similar-raters &rest filters)
-  (cl-flet ((yes (movie-id) t))
-    (let ((filters (or filters (cons #'yes filters))))
-      (let* ((ctable (compute-coefficient-table rater-id num-similar-raters))
-             (ratings-table (apply #'compute-ratings-table filters))
-             (movie-averages-table (compute-movie-averages-table ratings-table ctable min-raters))
-             (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table)))
-        (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
-          (movie-info-title (gethash top-movie-id *movie-data-table*)))))))
+  (let* ((ctable (compute-coefficient-table rater-id num-similar-raters))
+         (ratings-table (apply #'compute-ratings-table filters))
+         (movie-averages-table (compute-movie-averages-table ratings-table ctable min-raters))
+         (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table)))
+    (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
+      (movie-info-title (gethash top-movie-id *movie-data-table*)))))
 
 ;;; Tests
 
