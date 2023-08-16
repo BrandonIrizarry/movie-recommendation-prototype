@@ -58,24 +58,28 @@ Filter according to keyword args FILTERS."
 
   ;; Tell program how to define a predicate, given a keyword and
   ;; corresponding argument.
+  ;;
+  ;; The second "blank" argument is an (unused) slot for the hash
+  ;; value; it allows the predicate to be used directly as an input to
+  ;; 'hash-table-keep-if'.
   (cl-flet ((define-genre-predicate (given-genre)
-              (lambda (movie-id)
+              (lambda (movie-id _)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (genres (movie-info-genres full-info)))
                   (string-match given-genre genres))))
             (define-directors-predicate (given-directors)
-              (lambda (movie-id)
+              (lambda (movie-id _)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (directors (movie-info-directors full-info)))
                   (seq-intersection (split-string directors "," t)
                                     (split-string given-directors "," t)))))
             (define-minutes-predicate ((min max))
-              (lambda (movie-id)
+              (lambda (movie-id _)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (duration (movie-info-minutes full-info)))
                   (<= min (string-to-number duration) max))))
             (define-year-predicate (given-year)
-              (lambda (movie-id)
+              (lambda (movie-id _)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (year (movie-info-year full-info)))
                   (<= given-year (string-to-number year))))))
@@ -103,7 +107,7 @@ Filter according to keyword args FILTERS."
               (when-let ((pred-maker (cdr (assq filter-type predicate-table))))
                 (push (funcall pred-maker criterion) preds))))
           (dolist (pred preds ratings-table)
-            (hash-table-keep-if ratings-table (lambda (movie-id _) (funcall pred movie-id)))))))))
+            (hash-table-keep-if ratings-table pred)))))))
 
 (defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
