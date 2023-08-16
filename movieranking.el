@@ -58,13 +58,20 @@ Filter according to keyword args FILTERS."
 
   ;; Tell program how to define a predicate, given a keyword and
   ;; corresponding argument.
-  (cl-flet ((define-genre-predicate (genre)
+  (cl-flet ((define-genre-predicate (given-genre)
               (lambda (movie-id)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (genres (movie-info-genres full-info)))
-                  (string-match genre genres)))))
+                  (string-match given-genre genres))))
+            (define-directors-predicate (given-directors)
+              (lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (directors (movie-info-directors full-info)))
+                  (seq-intersection (split-string directors "," t)
+                                    (split-string given-directors "," t))))))
     (let ((predicate-table
-           `((:genre . ,#'define-genre-predicate))))
+           `((:genre . ,#'define-genre-predicate)
+             (:directors . ,#'define-directors-predicate))))
 
       ;; Compute the initial ratings table.
       (let ((ratings-table (make-hash-table :test #'equal)))
@@ -125,8 +132,8 @@ movies, along with their weighted averages."
              (ratings-table (apply #'compute-ratings-table filters))
              (movie-averages-table (compute-movie-averages-table ratings-table ctable min-raters))
              (top-ranked-movie-ids (get-top-ranked-movie-ids movie-averages-table)))
-          (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
-            (movie-info-title (gethash top-movie-id *movie-data-table*)))))))
+        (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
+          (movie-info-title (gethash top-movie-id *movie-data-table*)))))))
 
 ;;; Tests
 
@@ -141,3 +148,9 @@ movies, along with their weighted averages."
   (should (equal
            "The Fault in Our Stars"
            (main "65" 5 20))))
+
+(ert-deftest top-csdo-is-unforgiven ()
+  (let ((directors "Clint Eastwood,Sydney Pollack,David Cronenberg,Oliver Stone"))
+    (should (equal
+             "Unforgiven"
+             (main "1034" 3 10 :directors directors)))))
