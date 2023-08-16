@@ -68,10 +68,16 @@ Filter according to keyword args FILTERS."
                 (let* ((full-info (gethash movie-id *movie-data-table*))
                        (directors (movie-info-directors full-info)))
                   (seq-intersection (split-string directors "," t)
-                                    (split-string given-directors "," t))))))
+                                    (split-string given-directors "," t)))))
+            (define-minutes-predicate ((min max))
+              (lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (duration (movie-info-minutes full-info)))
+                  (<= min (string-to-number duration) max)))))
     (let ((predicate-table
            `((:genre . ,#'define-genre-predicate)
-             (:directors . ,#'define-directors-predicate))))
+             (:directors . ,#'define-directors-predicate)
+             (:minutes . ,#'define-minutes-predicate))))
 
       ;; Compute the initial ratings table.
       (let ((ratings-table (make-hash-table :test #'equal)))
@@ -152,3 +158,8 @@ movies, along with their weighted averages."
     (should (equal
              "Unforgiven"
              (main "1034" 3 10 :directors directors)))))
+
+(ert-deftest top-adventure-100-200-is-interstellar ()
+  (should (equal
+           "Interstellar"
+           (main "65" 5 10 :genre "Adventure" :minutes '(100 200)))))
