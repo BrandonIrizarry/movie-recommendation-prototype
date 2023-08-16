@@ -32,4 +32,12 @@ arguments, in that order."
       (when (funcall predicate key value)
         (remhash key hash-table)))))
 
+(defun hash-table-keep-if (hash-table predicate)
+  "Keep only those key-value pairs for which PREDICATE returns T;
+destructively remove the rest.
+
+PREDICATE is a function that accepts the key and value as
+arguments, in that order."
+  (hash-table-delete-if hash-table (lambda (k v) (not (funcall predicate k v)))))
+
 (provide 'hash-helper)

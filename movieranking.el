@@ -103,7 +103,7 @@ Filter according to keyword args FILTERS."
               (when-let ((pred-maker (cdr (assq filter-type predicate-table))))
                 (push (funcall pred-maker criterion) preds))))
           (dolist (pred preds ratings-table)
-            (hash-table-delete-if ratings-table (lambda (movie-id _) (not (funcall pred movie-id))))))))))
+            (hash-table-keep-if ratings-table (lambda (movie-id _) (funcall pred movie-id)))))))))
 
 (defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
