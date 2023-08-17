@@ -38,6 +38,9 @@ destructively remove the rest.
 
 PREDICATE is a function that accepts the key and value as
 arguments, in that order."
-  (hash-table-delete-if hash-table (lambda (k v) (not (funcall predicate k v)))))
+  (cl-flet ((negate (fn)
+              (lambda (&rest _)
+                (not (apply fn _)))))
+    (hash-table-delete-if hash-table (negate predicate))))
 
 (provide 'hash-helper)
