@@ -21,18 +21,27 @@ value (default NIL).
      (maphash (lambda (,key ,value) ,@body) ,hash-table)
      ,result))
 
-(defun hash-table-delete-if (hash-table predicate)
+(cl-defun hash-table-delete-if (hash-table predicate &key by)
   "Destructively remove all key-value pairs of HASH-TABLE whenever
 PREDICATE returns T.
 
 PREDICATE is a function that accepts the key and value as
 arguments, in that order."
+  (when (null by)
+    (error "Missing keyword"))
+  (let ((keywords '(key value both)))
+    (unless (memq by keywords)
+      (error "Invalid keyword %s" by)))
   (let ((copy (copy-hash-table hash-table)))
     (dohash (key value copy hash-table)
-      (when (funcall predicate key value)
-        (remhash key hash-table)))))
+      (let ((test (pcase by
+                    ('key (funcall predicate key))
+                    ('value (funcall predicate value))
+                    ('both (funcall predicate key value)))))
+        (when test
+          (remhash key hash-table))))))
 
-(defun hash-table-keep-if (hash-table predicate)
+(cl-defun hash-table-keep-if (hash-table predicate &key by)
   "Keep only those key-value pairs for which PREDICATE returns T;
 destructively remove the rest.
 
@@ -41,6 +50,6 @@ arguments, in that order."
   (cl-flet ((negate (fn)
               (lambda (&rest _)
                 (not (apply fn _)))))
-    (hash-table-delete-if hash-table (negate predicate))))
+    (hash-table-delete-if hash-table (negate predicate) :by by)))
 
 (provide 'hash-helper)

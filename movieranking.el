@@ -48,7 +48,7 @@ NUM-SIMILAR-RATERS) coefficients."
            (bad-coefficient-p (lambda (rater-id coefficient)
                                 (or (<= coefficient 0)
                                     (not (memql coefficient top-coefficients))))))
-      (hash-table-delete-if coefficient-table bad-coefficient-p))))
+      (hash-table-delete-if coefficient-table bad-coefficient-p :by 'both))))
 
 (defun compute-ratings-table (&rest filters)
   "Generate a hash table that maps a movie ID to another hash table that
@@ -108,7 +108,7 @@ Filter according to keyword args FILTERS."
               (when-let ((pred-maker (cdr (assq filter-type predicate-table))))
                 (push (funcall pred-maker criterion) preds))))
           (dolist (pred preds ratings-table)
-            (hash-table-keep-if ratings-table pred)))))))
+            (hash-table-keep-if ratings-table pred :by 'both)))))))
 
 (defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
