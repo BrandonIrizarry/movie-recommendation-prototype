@@ -38,7 +38,7 @@ NUM-SIMILAR-RATERS) coefficients."
     (remhash main-rater-id rater-table-without-main)
 
     ;; Compute the initial coefficient table
-    (dohash (rater-id movie-table rater-table-without-main)
+    (dohash (rater-id _ rater-table-without-main)
       (let ((dot-product (compute-dot-product main-rater-id rater-id)))
         (puthash rater-id dot-product coefficient-table)))
 
