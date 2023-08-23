@@ -3,6 +3,10 @@
 ;;; This is almost how Aladdin must've felt when he stumbled into the
 ;;; cave and found the Diamond in the Rough, the Genie of the Lamp.
 ;;;
+(defun plist-keys (plist)
+  "Return the list of keys of PLIST."
+  (let ((grouping (seq-partition plist 2)))
+    (mapcar #'car grouping)))
 
 (let ((load-path (cons (expand-file-name ".") load-path)))
   (require 'csv-helper)
@@ -58,57 +62,47 @@ Filter according to keyword args FILTERS."
 
   ;; Tell program how to define a predicate, given a keyword and
   ;; corresponding argument.
-  ;;
-  ;; The second "blank" argument is an (unused) slot for the hash
-  ;; value; it allows the predicate to be used directly as an input to
-  ;; 'hash-table-keep-if'.
-  (cl-flet ((define-genre-predicate (given-genre)
-              (lambda (movie-id)
-                (let* ((full-info (gethash movie-id *movie-data-table*))
-                       (genres (movie-info-genres full-info)))
-                  (string-match given-genre genres))))
-            (define-directors-predicate (given-directors)
-              (lambda (movie-id)
-                (let* ((full-info (gethash movie-id *movie-data-table*))
-                       (directors (movie-info-directors full-info)))
-                  (seq-intersection (split-string directors "," t)
-                                    (split-string given-directors "," t)))))
-            (define-minutes-predicate (pair)
-              (seq-let (min max) pair
-                (lambda (movie-id)
-                  (let* ((full-info (gethash movie-id *movie-data-table*))
-                         (duration (movie-info-minutes full-info)))
-                    (<= min (string-to-number duration) max)))))
-            (define-year-predicate (given-year)
-              (lambda (movie-id)
-                (let* ((full-info (gethash movie-id *movie-data-table*))
-                       (year (movie-info-year full-info)))
-                  (<= given-year (string-to-number year))))))
-    (let ((predicate-table
-           `((:genre . ,#'define-genre-predicate)
-             (:directors . ,#'define-directors-predicate)
-             (:minutes . ,#'define-minutes-predicate)
-             (:year . ,#'define-year-predicate))))
+  (let ((predicate-table
+         `(:genre
+           ,(lambda (movie-id)
+              (let* ((full-info (gethash movie-id *movie-data-table*))
+                     (genres (movie-info-genres full-info)))
+                (string-match (plist-get filters :genre) genres)))
 
-      ;; Compute the initial ratings table.
-      (let ((ratings-table (make-hash-table :test #'equal)))
-        (dohash (rater-id movie-table *rater-table* ratings-table)
-          (dohash (movie-id rating movie-table)
-            (let ((entry (gethash movie-id
-                                  ratings-table
-                                  (make-hash-table :test #'equal))))
-              (puthash rater-id rating entry)
-              (puthash movie-id entry ratings-table))))
+           :directors
+           ,(lambda (movie-id)
+              (let* ((full-info (gethash movie-id *movie-data-table*))
+                     (directors (movie-info-directors full-info)))
+                (seq-intersection (split-string directors "," t)
+                                  (split-string (plist-get filters :directors) "," t))))
 
-        ;; Filter out movies according to the filters defined in
-        ;; FILTERS.
-        (let (preds)
-          (let ((filter-args (seq-partition filters 2)))
-            (pcase-dolist (`(,filter-type ,criterion) filter-args)
-              (when-let ((pred-maker (cdr (assq filter-type predicate-table))))
-                (push (funcall pred-maker criterion) preds))))
-          (dolist (pred preds ratings-table)
-            (hash-table-keep-if ratings-table pred :by 'key)))))))
+           :minutes
+           ,(lambda (movie-id)
+              (seq-let (min max) (plist-get filters :minutes)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (duration (movie-info-minutes full-info)))
+                  (<= min (string-to-number duration) max))))
+
+           :year
+           ,(lambda (movie-id)
+              (let* ((full-info (gethash movie-id *movie-data-table*))
+                     (year (movie-info-year full-info)))
+                (<= (plist-get filters :year) (string-to-number year)))))))
+
+
+    (let ((ratings-table (make-hash-table :test #'equal)))
+      (dohash (rater-id movie-table *rater-table* ratings-table)
+        (dohash (movie-id rating movie-table)
+          (let ((entry (gethash movie-id
+                                ratings-table
+                                (make-hash-table :test #'equal))))
+            (puthash rater-id rating entry)
+            (puthash movie-id entry ratings-table))))
+
+      ;; Filter out movies according to the filters defined in
+      ;; FILTERS.
+      (dolist (filter (plist-keys filters) ratings-table)
+        (hash-table-keep-if ratings-table (plist-get predicate-table filter) :by 'key)))))
 
 (defun compute-movie-averages-table (ratings-table coefficient-table min-raters)
   "Generate a hash table that maps a movie ID to a weighted-average rating.
