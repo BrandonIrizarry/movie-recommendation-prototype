@@ -3,16 +3,13 @@
 ;;; This is almost how Aladdin must've felt when he stumbled into the
 ;;; cave and found the Diamond in the Rough, the Genie of the Lamp.
 ;;;
-(defun plist-keys (plist)
-  "Return the list of keys of PLIST."
-  (let ((grouping (seq-partition plist 2)))
-    (mapcar #'car grouping)))
 
 (let ((load-path (cons (expand-file-name ".") load-path)))
   (require 'csv-helper)
   (require 'hash-helper)
   (require 'rater-table)
-  (require 'movie-data-table))
+  (require 'movie-data-table)
+  (require 'util))
 
 (defun compute-dot-product (rater-id-1 rater-id-2)
   "Compute the dot product of two rows in the given RATER-TABLE."
