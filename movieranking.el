@@ -57,44 +57,47 @@ maps a rater ID to a rating.
 
 Filter according to keyword args FILTERS."
 
-  ;; Tell program how to define a predicate, given a keyword and
-  ;; corresponding argument.
-  (let ((predicate-table
-         `(:genre
-           ,(lambda (movie-id)
-              (let* ((full-info (gethash movie-id *movie-data-table*))
-                     (genres (movie-info-genres full-info)))
-                (string-match (plist-get filters :genre) genres)))
+  ;; Construct the initial table.
+  (let ((ratings-table (make-hash-table :test #'equal)))
+    (dohash (rater-id movie-table *rater-table* ratings-table)
+      (dohash (movie-id rating movie-table)
+        (let ((entry (gethash movie-id
+                              ratings-table
+                              (make-hash-table :test #'equal))))
+          (puthash rater-id rating entry)
+          (puthash movie-id entry ratings-table))))
 
-           :directors
-           ,(lambda (movie-id)
-              (let* ((full-info (gethash movie-id *movie-data-table*))
-                     (directors (movie-info-directors full-info)))
-                (seq-intersection (split-string directors "," t)
-                                  (split-string (plist-get filters :directors) "," t))))
-
-           :minutes
-           ,(lambda (movie-id)
-              (seq-let (min max) (plist-get filters :minutes)
+    ;; Tell program how to define a predicate, given a keyword and
+    ;; corresponding argument.
+    ;;
+    ;; Each lambda body takes advantange of the lexical availability
+    ;; of FILTERS.
+    (let ((predicate-table
+           `(:genre
+             ,(lambda (movie-id)
                 (let* ((full-info (gethash movie-id *movie-data-table*))
-                       (duration (movie-info-minutes full-info)))
-                  (<= min (string-to-number duration) max))))
+                       (genres (movie-info-genres full-info)))
+                  (string-match (plist-get filters :genre) genres)))
 
-           :year
-           ,(lambda (movie-id)
-              (let* ((full-info (gethash movie-id *movie-data-table*))
-                     (year (movie-info-year full-info)))
-                (<= (plist-get filters :year) (string-to-number year)))))))
+             :directors
+             ,(lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (directors (movie-info-directors full-info)))
+                  (seq-intersection (split-string directors "," t)
+                                    (split-string (plist-get filters :directors) "," t))))
 
+             :minutes
+             ,(lambda (movie-id)
+                (seq-let (min max) (plist-get filters :minutes)
+                  (let* ((full-info (gethash movie-id *movie-data-table*))
+                         (duration (movie-info-minutes full-info)))
+                    (<= min (string-to-number duration) max))))
 
-    (let ((ratings-table (make-hash-table :test #'equal)))
-      (dohash (rater-id movie-table *rater-table* ratings-table)
-        (dohash (movie-id rating movie-table)
-          (let ((entry (gethash movie-id
-                                ratings-table
-                                (make-hash-table :test #'equal))))
-            (puthash rater-id rating entry)
-            (puthash movie-id entry ratings-table))))
+             :year
+             ,(lambda (movie-id)
+                (let* ((full-info (gethash movie-id *movie-data-table*))
+                       (year (movie-info-year full-info)))
+                  (<= (plist-get filters :year) (string-to-number year)))))))
 
       ;; Filter out movies according to the filters defined in
       ;; FILTERS.
