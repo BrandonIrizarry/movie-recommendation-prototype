@@ -125,7 +125,10 @@ Any row in RATINGS-TABLE ismaller than MIN-RATERS is skipped."
 
 (defun get-top-ranked-movie-ids (movie-averages-table &optional top-n)
   "Using MOVIE-AVERAGES-TABLE, generate a descending-sorted list of
-movies, along with their weighted averages."
+movies, along with their weighted averages.
+
+With optional argument TOP-N, only return the top N ranked
+movies."
   (cl-flet ((better-movie-p (lambda (pair1 pair2)
                               (> (cdr pair1)
                                  (cdr pair2)))))
@@ -133,8 +136,9 @@ movies, along with their weighted averages."
       (dohash (movie-id average movie-averages-table)
         (push (cons movie-id average) pairs))
       (let ((sorted (sort pairs #'better-movie-p)))
-        (seq-take sorted (or top-n
-                             (length sorted)))))))
+        (if top-n
+            (seq-take sorted top-n)
+          sorted)))))
 
 (defun main (rater-id min-raters num-similar-raters &rest filters)
   (let* ((ctable (compute-coefficient-table rater-id num-similar-raters))
