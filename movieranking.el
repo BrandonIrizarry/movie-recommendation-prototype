@@ -38,12 +38,12 @@ NUM-SIMILAR-RATERS) coefficients."
     ;; Avoid comparison with oneself.
     (remhash main-rater-id rater-table-without-main)
 
-    ;; Compute the initial coefficient table
+    ;; Compute the initial coefficient table.
     (dohash (rater-id _ rater-table-without-main)
       (let ((dot-product (compute-dot-product main-rater-id rater-id)))
         (puthash rater-id dot-product coefficient-table)))
 
-    ;; Filter out non-positive and low-ranking coefficients
+    ;; Filter out non-positive and low-ranking coefficients,
     (let* ((coefficients (hash-table-values coefficient-table))
            (top-coefficients (seq-take (sort coefficients #'>) num-similar-raters))
            (bad-coefficient-p (lambda (coefficient)
@@ -110,7 +110,7 @@ Filter according to keyword args FILTERS."
 Each movie rating is weighted by the given rater's value in
 COEFFICIENT-TABLE. Any rater not in COEFFICIENT-TABLE is skipped.
 
-Any row in RATINGS-TABLE ismaller than MIN-RATERS is skipped."
+Any row in RATINGS-TABLE smaller than MIN-RATERS is skipped."
   (let ((movie-averages-table (make-hash-table :test #'equal)))
     (dohash (movie-id ratings-by-rater ratings-table movie-averages-table)
       (let ((sum 0)
@@ -148,7 +148,7 @@ movies."
     (pcase-let ((`(,top-movie-id . ,average) (car top-ranked-movie-ids)))
       (movie-info-title (gethash top-movie-id *movie-data-table*)))))
 
-;;; Tests
+;;; Tests.
 
 (require 'ert)
 
